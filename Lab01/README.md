@@ -11,7 +11,7 @@ de intervalo de tempo para isolar eventos específicos.
 
 ## Procedimentos
 1. Iniciar o Windows e ir para tela de sessão do usuário. 
-2. Execução de múltiplas falhas de Logon intencionais com senhas incorretas às **13:32** do dia **04/11/2026**.
+2. Execução de múltiplas falhas de Logon intencionais com PIN incorretos às **13:32** do dia **04/11/2026**.
 3. Verificação de tentativas de autenticação no Visualizador de Eventos, utilizando filtragem do **Event ID 4625**.
 4. Utilizar linha de comando no PowerShell para filtragem de horário para isolar as tentativas suspeitas e desconsiderar eventos acidentais posteriores.
 5. Analisar e Capturar o resultado da linha de comando, mostrando várias tentativas seguidas mal-sucedidas de Logon.
@@ -48,7 +48,7 @@ dentro de volumes massivos de logs corporativos.
 
 
 ## Conclusão
-É de suma importância que é necessário analisar, também, o contexto dos eventos. Não basta chegar numa conclusão com base num caso isolado. Usando esse
+É de suma importância analisar, também, o contexto dos eventos. Não basta chegar numa conclusão com base num caso isolado. Usando esse
 lab como exemplo, seria necessário identificar quantidade de tentativas pelo tempo, se o usuário logou com sucesso, quais foram suas ações após isso 
 e entre outros fatores. Se basear em apenas algumas tentativas mal-sucedidas de logon, sendo que não necessariamente que o PC estaria comprometido e escalar o caso, 
 pode ser bastante prejudicial para a equipe. Por isso, no caso desse lab, seria classificado como um False Positive/Low Risk. O caso teria uma classificação maior, 
