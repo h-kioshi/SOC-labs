@@ -4,6 +4,9 @@
 Validar a telemetria de auditoria nativa do Windows após tentativas de Logon mal-sucedidas, identificando o Event ID no Event Viewer e aplicando filtros
 de intervalo de tempo para isolar eventos específicos.
 
+## Contexto
+Gerei este evento de forma controlada para aprender como um 4625 aparece no log e como filtrá-lo por horário. É a base para depois detectar Brute Force e Password Spraying.
+
 ## Ferramentas Utilizadas
 - Windows 10 em VM (VirtualBox - Ambiente em modo NAT);
 - Visualizador de Eventos (eventvwr.msc);
@@ -11,48 +14,69 @@ de intervalo de tempo para isolar eventos específicos.
 
 ## Procedimentos
 1. Iniciar o Windows e ir para tela de sessão do usuário. 
-2. Execução de múltiplas falhas de Logon intencionais com PIN incorretos às **13:32** do dia **04/11/2026**.
+2. Execução de múltiplas falhas de Logon intencionais com PIN incorreto às **13:32** do dia **04/11/2026**.
 3. Verificação de tentativas de autenticação no Visualizador de Eventos, utilizando filtragem do **Event ID 4625**.
-4. Utilizar linha de comando no PowerShell para filtragem de horário para isolar as tentativas suspeitas e desconsiderar eventos acidentais posteriores.
+4. Utilizar linha de comando no PowerShell para filtragem de horário para isolar as tentativas do teste e desconsiderar eventos acidentais posteriores.
 5. Analisar e Capturar o resultado da linha de comando, mostrando várias tentativas seguidas mal-sucedidas de Logon.
   
 
-## Evidências e Análise de Logs
-- **Event ID Capturado:** 4625 (Falha de Logon)
-- **Logon Type:** 2
+## Análise de Logs
+- **Event ID Capturado:** 4625 (Falha de Logon.)
+- **Requerente:** DESKTOP-JVKPULU$ (Conta da própria máquina que registrou a falha.)
+- **Logon Type:** 2 (Alguém que digitou na própria máquina.)
+- **Conta-Alvo:** - (Vazio nesse evento.)
 - **Status:** 0xC000006D (Indica uma falha de logon.)
 - **SubStatus:** 0xC0000380 (Indica que um PIN incorreto foi inserido ao tentar fazer login ou autenticação no sistema.)
 - **Processo Responsável:** svchost.exe
+- **IP de Origem:** 127.0.0.1 (Loopback.)
 
 ### Evidência 
-<img width="769" height="561" alt="{97C51569-C9F2-4B40-8FCF-ED876C2D0313}" src="https://github.com/user-attachments/assets/4712b642-f774-4991-b7f5-f7f233688d17" />
-<img width="780" height="562" alt="{97CEFADA-2692-40E8-BC71-825CCAC38C74}" src="https://github.com/user-attachments/assets/0b3f12aa-8e9b-4753-bc73-a268b2a7a639" />
-<img width="778" height="565" alt="{3BD1D35B-997B-4928-9CD2-5EF7249226A6}" src="https://github.com/user-attachments/assets/71eb5033-9aa7-40ab-82b4-5ef4ecdd450c" />
-<img width="782" height="563" alt="{3140886D-31CA-4878-A48B-47BEA6799804}" src="https://github.com/user-attachments/assets/55a88cbb-870c-4633-9cb1-b68adee41e41" />
+**Comando utilizado no PowerShell:**
+```powershell
+Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4625; StartTime=[datetime]'2026-11-04 13:30:00'; EndTime=[datetime]'2026-11-04 13:40:00'} -MaxEvents 5 | Format-List TimeCreated, Message
+```
+
+<img width="769" height="561" alt="Event 4625, às 13:32:30, Logon Tipo 2, Origem 127.0.0.1" src="https://github.com/user-attachments/assets/4712b642-f774-4991-b7f5-f7f233688d17" />
+<img width="780" height="562" alt="Event 4625, às 13:32:28, Logon Tipo 2, Origem 127.0.0.1" src="https://github.com/user-attachments/assets/0b3f12aa-8e9b-4753-bc73-a268b2a7a639" />
+<img width="778" height="565" alt="Event 4625, às 13:32:27, Logon Tipo 2, Origem 127.0.0.1" src="https://github.com/user-attachments/assets/71eb5033-9aa7-40ab-82b4-5ef4ecdd450c" />
+<img width="782" height="563" alt="Event 4625, às 13:32:25, Logon Tipo 2, Origem 127.0.0.1" src="https://github.com/user-attachments/assets/55a88cbb-870c-4633-9cb1-b68adee41e41" />
 
 
 
-### Nota Metodológica
-Embora simular a falha de senha seja um procedimento simples, a análise do **Event ID 4625** é importante pelos seguintes motivos:
 
-1. **Criação de Alertas Precisos:** Entender como o log funciona na prática é o primeiro passo para configurar alertas no SIEM sem gerar
-alarmes falsos o tempo todo. Se o analista não souber como um falso positivo legítimo se parece na origem, não conseguirá calibrar alertas para evitar
-o cansaço de alertas (alert fatigue).
+## MITRE ATT&CK
+| Técnica | ID | Relação com este lab |
+|---|---|---|
+| Brute Force | T1110 | Muitas falhas contra uma conta. O 4625 é a base para detectar. |
+| Password Spraying | T1110.003 | Poucas senhas testadas em várias contas. |
+| Valid Accounts | T1078 | Logon bem-sucedido (4624) depois das falhas, indicando acesso com conta válida. |
 
-2. **Mapeamento de Baseline:** A presença do `Logon Type 2` e do IP de loopback (`127.0.0.1`) estabelece a linha de base (*baseline*) de um erro de
-digitação humano comum. Isso permite diferenciar rapidamente o uso cotidiano do sistema de um comportamento anômalo.
-
-3. **Prática de Resposta a Incidentes:** A utilização de rotinas no PowerShell para aplicar filtros de janela de tempo
-(`StartTime`/`EndTime`) simula o processo real de triagem de incidentes, em que o analista precisa isolar eventos específicos
-dentro de volumes massivos de logs corporativos.
-
+>**Nota:** Nenhuma dessas técnicas ocorreu neste lab. A tabela mostra o que o 4625 ajuda a detectar.
 
 ## Conclusão
-É de suma importância analisar, também, o contexto dos eventos. Não basta chegar numa conclusão com base num caso isolado. Usando esse
-lab como exemplo, seria necessário identificar quantidade de tentativas pelo tempo, se o usuário logou com sucesso, quais foram suas ações após isso 
-e entre outros fatores. Se basear em apenas algumas tentativas mal-sucedidas de logon, sendo que não necessariamente que o PC estaria comprometido e escalar o caso, 
-pode ser bastante prejudicial para a equipe. Por isso, no caso desse lab, seria classificado como um False Positive/Low Risk. O caso teria uma classificação maior, 
-se houvesse dezenas ou centenas de tentativas num curto intervalo, podendo-se caracterizar como um Brute Force. Dezenas de Eventos 4625 em usuários diferentes 
-em um curto período, caracterizando-se como um Password Spraying. Ou se houve um logon bem-sucedido seguido pela execução de processos de reconhecimento e
-persistência, pode indicar o inicio da fase de exploração do agente de ameaça. 
+
+**O que aconteceu?:** 4 Falhas (Event ID 4625) intencionais de PIN às 13:32, todas Logon Tipo 2, com origem do IP 127.0.0.1 (Loopback).
+
+**Classificação:** Benign True Positive/Baixo Risco, sem necessidade de escalar. O volume de alertas e o IP de origem diminui drasticamente o nível do Risco.
+
+**Seria um incidente, se houvesse:**
+1. Dezenas de eventos 4625 gerado em um curto período de tempo na mesma conta, caracterizando-se ser um Brute Force (T1110).
+2. Eventos 4625 em várias contas diferentes, sendo um provável Password Spraying (T1110.003).
+3. Um evento 4624 (Logon bem-sucedido) logo após diversas falhas, com processos de reconhecimento ou persistência em seguida.
+4. IP de origem for externo.
+
+## O que eu faria
+
+- **Neste lab:** Classificar como benign true positive, registrar e não escalar.
+- **Se fossem dezenas de 4625 em um curto período:** Identificar as contas, o IP de origem, procurar um 4624 logo depois, checar processos criados após o Login (4688 ou Sysmon 1) e escalar. Como contenção, bloquear o IP ou a conta temporariamente e exigir troca de senha.
+
+## O que aprendi
+
+- Aprendi a reconhecer o evento 4625 e ler os campos que importam: tipo de logon, Status e SubStatus, e IP de origem.
+- Aprendi a filtrar por horário com `Get-WinEvent` para isolar só os eventos do teste.
+- Um 4625 isolado normalmente é inofensivo. Um alerta real dependeria do volume, contas-alvo, origem e o que acontece depois do Login.
+
+
+
+
 
